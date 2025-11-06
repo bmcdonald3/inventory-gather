@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"crypto/tls"
+	"io"
 )
 
 // Placeholder for the actual API server address
@@ -39,7 +41,7 @@ func CollectAndPost(bmcIP string) error {
 		{DeviceType: "DIMM", Manufacturer: "Micron (Simulated)", SerialNumber: "DIMM0003", RedfishURI: "/Systems/1/Memory/1"},
 	}
 	fmt.Println("Redfish Discovery Simulated: Found 3 devices.")
-	
+
 	// B. API POSTING
 	// The API requires a two-step process: Create the resource, then update its status.
 	// We will use a map to store the relationship between the temporary name and the API-assigned UID.
