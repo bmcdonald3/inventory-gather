@@ -5,6 +5,9 @@ package inventory
 import (
 	"fmt"
 	"math/rand"
+	"bytes"
+	"encoding/json"
+	"net/http"
 )
 
 // Placeholder for the actual API server address
