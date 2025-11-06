@@ -12,7 +12,7 @@ import (
 )
 
 // Placeholder for the actual API server address
-const InventoryAPIHost = "http://localhost:8080"
+const InventoryAPIHost = "http://localhost:8081"
 const DefaultUsername = "root"
 const DefaultPassword = "password" // Security note: Hardcoding credentials is not recommended in production.
 
