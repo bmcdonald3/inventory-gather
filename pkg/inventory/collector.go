@@ -154,8 +154,29 @@ func updateDeviceStatus(uid string, statusData map[string]interface{}) error {
 		"status": statusData,
 	}
 
-	// ... HTTP PUT to InventoryAPIHost + "/devices/" + uid + "/status" with payload ...
-	
-	// Simulation: Assume a 200/201 response indicates success.
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal status payload: %w", err)
+	}
+
+	// Create an HTTP client for the PUT request
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPut, InventoryAPIHost+"/devices/"+uid+"/status", bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return fmt.Errorf("failed to create PUT request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute PUT request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("api returned status code %d when updating status", resp.StatusCode)
+	}
+
+	// If the API call succeeded (Status 200), the 'payload' is now used.
 	return nil
 }
