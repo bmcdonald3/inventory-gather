@@ -221,3 +221,34 @@ func NewRedfishClient(bmcIP, username, password string) (*RedfishClient, error) 
 		HTTPClient: &http.Client{Transport: tr},
 	}, nil
 }
+
+func (c *RedfishClient) Get(path string) ([]byte, error) {
+	// The path can be a full URI or a relative path (e.g., /Systems/1).
+	targetURL := c.BaseURL + path
+	
+	req, err := http.NewRequest(http.MethodGet, targetURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Redfish request for %s: %w", targetURL, err)
+	}
+
+	// Add Basic Authentication header
+	req.SetBasicAuth(c.Username, c.Password)
+	req.Header.Add("Accept", "application/json")
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute Redfish request for %s: %w", targetURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Redfish API returned status code %d for %s", resp.StatusCode, targetURL)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	return body, nil
+}
