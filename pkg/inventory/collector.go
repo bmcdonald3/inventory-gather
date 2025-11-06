@@ -2,6 +2,13 @@
 
 package inventory
 
+import (
+	"fmt"
+	"math/rand"
+	"net/http"
+	"encoding/json"
+)
+
 // Placeholder for the actual API server address
 const InventoryAPIHost = "http://localhost:8080"
 const DefaultUsername = "root"
