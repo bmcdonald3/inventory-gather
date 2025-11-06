@@ -195,3 +195,29 @@ func updateDeviceStatus(uid string, statusData map[string]interface{}) error {
 	// If the API call succeeded (Status 200), the 'payload' is now used.
 	return nil
 }
+
+type RedfishClient struct {
+	BaseURL  string
+	Username string
+	Password string
+	HTTPClient *http.Client
+}
+
+// NewRedfishClient initializes the client with a specified BMC IP.
+func NewRedfishClient(bmcIP, username, password string) (*RedfishClient, error) {
+	// Redfish requires HTTPS and starts at the /redfish/v1 path.
+	baseURL := fmt.Sprintf("https://%s/redfish/v1", bmcIP)
+
+	// Create a custom HTTP client that trusts the BMC's self-signed certificate.
+	// NOTE: In production, you would use proper certificate validation.
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	
+	return &RedfishClient{
+		BaseURL:  baseURL,
+		Username: username,
+		Password: password,
+		HTTPClient: &http.Client{Transport: tr},
+	}, nil
+}
