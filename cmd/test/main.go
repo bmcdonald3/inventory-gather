@@ -3,7 +3,7 @@ package main
 
 import (
 	"log"
-	"your/project/pkg/inventory" // Use the actual path to your package
+	"github.com/bmcdonald3/inventory-gather/pkg/inventory" // Use the actual path to your package
 )
 
 func main() {
