@@ -118,6 +118,14 @@ func discoverDevices(bmcIP string) ([]DiscoveredDevice, error) {
 
 // pkg/inventory/collector.go
 
+type Metadata struct {
+	UID string `json:"uid"`
+}
+
+type DeviceResponse struct {
+	Metadata Metadata `json:"metadata"`
+}
+
 // createDeviceEnvelope POSTs to /devices to create the resource and get its UID.
 func createDeviceEnvelope(name string) (string, error) {
 	// Fabrica requires a name and optional metadata to create the envelope.
@@ -140,13 +148,16 @@ func createDeviceEnvelope(name string) (string, error) {
 		return "", fmt.Errorf("api returned status code %d when creating envelope", resp.StatusCode)
 	}
 
-	// In a real implementation, you would unmarshal resp.Body to get the actual UID.
-	// For now, we'll keep the simulation of the UID generation after confirming the API call succeeded.
-	// If the API call succeeded (Status 201), the 'payload' is now used.
-	
-	// Simulation: The API assigned a UID.
-	simulatedUID := fmt.Sprintf("dev-%x", rand.Intn(999999)) 
-	return simulatedUID, nil
+	var deviceResponse DeviceResponse
+	if err := json.NewDecoder(resp.Body).Decode(&deviceResponse); err != nil {
+		return "", fmt.Errorf("failed to decode API response for UID: %w", err)
+	}
+
+	if deviceResponse.Metadata.UID == "" {
+		return "", fmt.Errorf("API response did not contain a UID in the metadata")
+	}
+
+	return deviceResponse.Metadata.UID, nil
 }
 
 // updateDeviceStatus PUTs the observed state to /devices/{uid}/status.
@@ -163,8 +174,10 @@ func updateDeviceStatus(uid string, statusData map[string]interface{}) error {
 	}
 
 	// Create an HTTP client for the PUT request
+	url := InventoryAPIHost + "/devices/" + uid + "/status"
+	fmt.Printf("Attempting PUT to: %s\n", url)
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPut, InventoryAPIHost+"/devices/"+uid+"/status", bytes.NewBuffer(jsonPayload))
+	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jsonPayload))
 	if err != nil {
 		return fmt.Errorf("failed to create PUT request: %w", err)
 	}
