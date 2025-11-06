@@ -1,0 +1,41 @@
+## Go Build Artifacts
+# Binaries for the current OS and architecture
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# Test binaries and cache
+*.test
+*.out
+/test_artifacts/
+/bin/
+
+## Dependency and Module Cache
+# Dependency cache (Go Module Mirror Cache)
+.cache/
+/vendor/
+
+# Go module cache (usually found in $GOPATH/pkg/mod, but sometimes local)
+/pkg/mod/
+
+## Fabrica / Generated Artifacts
+# Exclude the temporary test file you created
+/cmd/test/
+
+# Generated code and files that should not be tracked
+# NOTE: Fabrica generates code into specific folders (e.g., pkg/resources, cmd/server). 
+# You should track the source files (like cmd/server/main.go and the resource structs) 
+# but exclude large, auto-generated output files or databases.
+# If your storage is file-based (common in development), exclude the storage files:
+/storage/*.db
+/storage/*.json
+
+## IDE and Editor Files (Common)
+.idea/             # IntelliJ/GoLand
+.vscode/           # VS Code
+.sublime/          # Sublime Text
+*~                 # Backup files
+*.swp              # Vim swap files
