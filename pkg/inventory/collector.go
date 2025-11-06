@@ -1,5 +1,7 @@
 // pkg/inventory/collector.go
 
+package inventory
+
 // Placeholder for the actual API server address
 const InventoryAPIHost = "http://localhost:8080"
 const DefaultUsername = "root"
