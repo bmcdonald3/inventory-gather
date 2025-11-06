@@ -15,11 +15,31 @@ const DefaultUsername = "root"
 const DefaultPassword = "password" // Security note: Hardcoding credentials is not recommended in production.
 
 func CollectAndPost(bmcIP string) error {
-	// A. REDFISH DISCOVERY
-	devices, err := discoverDevices(bmcIP)
+	// 1. Initialize Redfish Client
+	rfClient, err := NewRedfishClient(bmcIP, DefaultUsername, DefaultPassword)
 	if err != nil {
-		return fmt.Errorf("redfish discovery failed: %w", err)
+		return fmt.Errorf("failed to initialize Redfish client: %w", err)
 	}
+
+	// 2. REDFISH DISCOVERY (Placeholder for Step 3)
+	// For testing the client, we can make a simple call to the root service entry point.
+	body, err := rfClient.Get("") // Getting the root path (https://<ip>/redfish/v1)
+	if err != nil {
+		return fmt.Errorf("redfish client test failed: %w", err)
+	}
+	
+	fmt.Printf("Redfish Client Test: Successfully connected to %s. Response size: %d bytes.\n", rfClient.BaseURL, len(body))
+
+	// devices, err := discoverDevices(rfClient) // The next step's function
+
+	// --- A. REDFISH DISCOVERY (Using simulated data for now) ---
+	devices := []DiscoveredDevice{
+		{DeviceType: "Node", Manufacturer: "HPE (Simulated)", SerialNumber: "ABC0001", RedfishURI: "/Systems/1"},
+		{DeviceType: "CPU", Manufacturer: "Intel (Simulated)", SerialNumber: "CPU0002", RedfishURI: "/Systems/1/Processors/1"},
+		{DeviceType: "DIMM", Manufacturer: "Micron (Simulated)", SerialNumber: "DIMM0003", RedfishURI: "/Systems/1/Memory/1"},
+	}
+	fmt.Println("Redfish Discovery Simulated: Found 3 devices.")
+	
 	// B. API POSTING
 	// The API requires a two-step process: Create the resource, then update its status.
 	// We will use a map to store the relationship between the temporary name and the API-assigned UID.
