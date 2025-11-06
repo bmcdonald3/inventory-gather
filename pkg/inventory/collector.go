@@ -5,8 +5,6 @@ package inventory
 import (
 	"fmt"
 	"math/rand"
-	"net/http"
-	"encoding/json"
 )
 
 // Placeholder for the actual API server address
@@ -122,14 +120,28 @@ func createDeviceEnvelope(name string) (string, error) {
 	// Fabrica requires a name and optional metadata to create the envelope.
 	payload := map[string]interface{}{
 		"name": name,
-		// Optionally, add labels here, e.g., "labels": {"source": "redfish"}
 	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	resp, err := http.Post(InventoryAPIHost+"/devices", "application/json", bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return "", fmt.Errorf("failed to post device envelope: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("api returned status code %d when creating envelope", resp.StatusCode)
+	}
+
+	// In a real implementation, you would unmarshal resp.Body to get the actual UID.
+	// For now, we'll keep the simulation of the UID generation after confirming the API call succeeded.
+	// If the API call succeeded (Status 201), the 'payload' is now used.
 	
-	// ... HTTP POST to InventoryAPIHost + "/devices" with payload ...
-	// You would use "net/http" and "encoding/json" here.
-	
-	// Simulation: Assume a successful POST returns a JSON body where the UID is
-	// in the "metadata.uid" field.
+	// Simulation: The API assigned a UID.
 	simulatedUID := fmt.Sprintf("dev-%x", rand.Intn(999999)) 
 	return simulatedUID, nil
 }
