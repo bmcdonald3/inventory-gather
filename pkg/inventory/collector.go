@@ -4,7 +4,6 @@ package inventory
 
 import (
 	"fmt"
-	"math/rand"
 	"bytes"
 	"encoding/json"
 	"net/http"
