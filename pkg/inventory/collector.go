@@ -281,7 +281,8 @@ func getSystemInventory(c *RedfishClient, systemURI string) (*SystemInventory, e
     
     // --- 2. Get Processors (CPUs) ---
     if cpuCollectionURI := systemData.Processors.ODataID; cpuCollectionURI != "" {
-        cpuDevices, err := getCollectionDevices(c, cpuCollectionURI, "CPU", systemURI, &RedfishProcessor{})
+		cleanedURI := strings.TrimPrefix(cpuCollectionURI, "/redfish/v1")
+        cpuDevices, err := getCollectionDevices(c, cleanedURI, "CPU", systemURI, &RedfishProcessor{})
         if err != nil {
             fmt.Printf("Warning: Failed to retrieve CPU inventory from %s: %v\n", cpuCollectionURI, err)
         } else {
@@ -291,7 +292,8 @@ func getSystemInventory(c *RedfishClient, systemURI string) (*SystemInventory, e
 
     // --- 3. Get Memory (DIMMs) ---
     if dimmCollectionURI := systemData.Memory.ODataID; dimmCollectionURI != "" {
-        dimmDevices, err := getCollectionDevices(c, dimmCollectionURI, "DIMM", systemURI, &RedfishMemory{})
+		cleanedURI := strings.TrimPrefix(dimmCollectionURI, "/redfish/v1")
+        dimmDevices, err := getCollectionDevices(c, cleanedURI, "DIMM", systemURI, &RedfishMemory{})
         if err != nil {
             fmt.Printf("Warning: Failed to retrieve DIMM inventory from %s: %v\n", dimmCollectionURI, err)
         } else {
