@@ -84,27 +84,84 @@ func CollectAndPost(
         return errors.New("redfish discovery found no devices to post")
     }
 
-    // =================================================
-    // TEMPORARY DEBUGGING BLOCK: REMOVE THIS BLOCK TO POST TO API
-    // =================================================
-    fmt.Println("\n--- DISCOVERED DEVICE INVENTORY (MAPPED) ---")
-    for i, dev := range devices {
-        jsonOutput, _ := json.MarshalIndent(dev, "", "  ")
-        fmt.Printf("Device %d:\n%s\n", i+1, jsonOutput)
-    }
-    fmt.Println("-------------------------------------------")
-    return nil // <--- EXIT HERE TO PREVIEW DATA
-    // =================================================
-
-    // --- 3. API POSTING (The original successful logic) ---
-   /* nameToUID := make(map[string]string)
+    nameToUID := make(map[string]string)
     
+    // Sort devices to ensure parents are posted before children.
+    // We assume Node is always the parent for CPUs/DIMMs.
+    // We rely on the parent ID being an empty string for the Node device.
+    
+    // 1. Post Parent Devices (Devices with no ParentID URI)
     for i, dev := range devices {
-        // 1. Create the Device Resource Envelope (POST /devices)
-        // ... (API Posting Logic using createDeviceEnvelope and updateDeviceStatus) ...
+        if dev.ParentID == "" {
+            // This is a top-level device (Node)
+            tempName := fmt.Sprintf("%s-%s", dev.DeviceType, dev.SerialNumber)
+            
+            fmt.Printf("-> Creating resource envelope for %s (%s)...\n", tempName, dev.DeviceType)
+            uid, err := createDeviceEnvelope(tempName)
+            if err != nil {
+                return fmt.Errorf("failed to create API envelope for %s: %w", tempName, err)
+            }
+            // Store the API-assigned UUID, mapped by the Redfish URI for lookup by children
+            nameToUID[dev.RedfishURI] = uid 
+            
+            // Update status (without ParentID for the top-level device)
+            statusData := map[string]interface{}{
+                "deviceType":   dev.DeviceType,
+                "manufacturer": dev.Manufacturer,
+                "partNumber":   dev.PartNumber,
+                "serialNumber": dev.SerialNumber,
+                "properties": map[string]interface{}{
+                    "redfish_uri": dev.RedfishURI,
+                },
+            }
+            fmt.Printf("-> Updating status for %s (UID: %s)...\n", tempName, uid)
+            if err := updateDeviceStatus(uid, statusData); err != nil {
+                return fmt.Errorf("failed to update status for %s: %w", tempName, err)
+            }
+            fmt.Printf("-> Successfully posted parent device %s\n", uid)
+        }
     }
 
-    return nil*/
+    // 2. Post Child Devices (Devices with a ParentID URI)
+    for i, dev := range devices {
+        if dev.ParentID != "" {
+            // This is a child device (CPU, DIMM, etc.)
+            
+            // Resolve Redfish URI ParentID to API UUID
+            parentUUID, ok := nameToUID[dev.ParentID]
+            if !ok {
+                 fmt.Printf("Warning: Failed to find parent UUID for %s. Skipping.\n", dev.ParentID)
+                 continue
+            }
+
+            tempName := fmt.Sprintf("%s-%s-%d", dev.DeviceType, dev.SerialNumber, i)
+            
+            fmt.Printf("-> Creating resource envelope for %s (%s)...\n", tempName, dev.DeviceType)
+            uid, err := createDeviceEnvelope(tempName)
+            if err != nil {
+                return fmt.Errorf("failed to create API envelope for %s: %w", tempName, err)
+            }
+            
+            // Update status (including the resolved ParentID UUID)
+            statusData := map[string]interface{}{
+                "deviceType":   dev.DeviceType,
+                "manufacturer": dev.Manufacturer,
+                "partNumber":   dev.PartNumber,
+                "serialNumber": dev.SerialNumber,
+                "parentID":     parentUUID, // <--- RESOLVED UUID HERE
+                "properties": map[string]interface{}{
+                    "redfish_uri": dev.RedfishURI,
+                },
+            }
+            fmt.Printf("-> Updating status for %s (UID: %s)...\n", tempName, uid)
+            if err := updateDeviceStatus(uid, statusData); err != nil {
+                return fmt.Errorf("failed to update status for %s: %w", tempName, err)
+            }
+            fmt.Printf("-> Successfully posted child device %s\n", uid)
+        }
+    }
+    
+    return nil
 }
 
 // createDeviceEnvelope POSTs to /devices to create the resource and get its UID.
