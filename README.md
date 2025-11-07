@@ -32,17 +32,15 @@ Run the collector from the project root using `go run` and provide the target BM
 
 **Command Syntax:**
 
-TODO add ticks
-bash
+```bash
 go run ./cmd/gather/main.go --ip <BMC_IP_ADDRESS>
-TODO add ticks
+```
 
 **Example Execution:**
 
-TODO add ticks
-bash
+```bash
 go run ./cmd/gather/main.go --ip 172.24.0.2
-TODO add ticks
+```
 
 ## Verification and Results
 
@@ -52,7 +50,7 @@ The tool successfully connected to the Redfish endpoint at `172.24.0.2`, discove
 
 The following output confirms that all steps, including authentication, discovery, and hierarchical API posting, completed successfully:
 
-TODO add ticks
+```
 Starting inventory collection for BMC IP: 172.24.0.2
 Redfish Client Test: Successfully connected to https://172.24.0.2/redfish/v1. Response size: 981 bytes.
 Redfish Discovery Complete: Found 7 total devices.
@@ -64,14 +62,13 @@ Redfish Discovery Complete: Found 7 total devices.
 -> Successfully posted child device dev-fb78d886
 ... (5 more child devices posted) ...
 Inventory collection and posting completed successfully.
-TODO add ticks
+```
 
 ### API Data Structure Example
 
 This section illustrates the complete JSON structure of the **Node** device (`Node-QSBP82909274`) posted by this tool, demonstrating how the Redfish data is mapped into the Fabrica resource envelope.
 
-TODO add ticks
-json
+``json
 {
   "apiVersion": "v1",
   "kind": "Device",
@@ -93,7 +90,7 @@ json
     }
   }
 }
-TODO add ticks
+```
 
 ### Data Posted to API
 
