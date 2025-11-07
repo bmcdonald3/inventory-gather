@@ -320,7 +320,8 @@ func getCollectionDevices(c *RedfishClient, collectionURI, deviceType, parentURI
 	}
 
 	for _, member := range collection.Members {
-		memberBody, err := c.Get(member.ODataID)
+		memberURI := strings.TrimPrefix(member.ODataID, "/redfish/v1")
+		memberBody, err := c.Get(memberURI)
 		if err != nil {
 			fmt.Printf("Warning: Failed to get member %s: %v\n", member.ODataID, err)
 			continue
