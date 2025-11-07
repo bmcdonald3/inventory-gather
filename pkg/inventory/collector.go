@@ -203,7 +203,10 @@ func NewRedfishClient(bmcIP, username, password string) (*RedfishClient, error) 
 
 func (c *RedfishClient) Get(path string) ([]byte, error) {
 	// The path can be a full URI or a relative path (e.g., /Systems/1).
-	targetURL := c.BaseURL + path
+	targetURL, err := url.JoinPath(c.BaseURL, path)
+    if err != nil {
+        return nil, fmt.Errorf("failed to join path: %w", err)
+    }
 	
 	req, err := http.NewRequest(http.MethodGet, targetURL, nil)
 	if err != nil {
