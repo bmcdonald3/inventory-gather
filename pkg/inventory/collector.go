@@ -12,6 +12,7 @@ import (
 	"errors"
 	"reflect"
 	"net/url"
+	"strings"
 )
 
 // Placeholder for the actual API server address
