@@ -293,3 +293,89 @@ func mapCommonProperties(rfProps CommonRedfishProperties, deviceType, redfishURI
 		RedfishURI:   redfishURI,
 	}
 }
+
+func getSystemInventory(c *RedfishClient, systemURI string) (*SystemInventory, error) {
+	inv := &SystemInventory{CPUs: make([]DiscoveredDevice, 0), DIMMs: make([]DiscoveredDevice, 0)}
+
+    // --- 1. Get and Map System (Node) Details ---
+	systemBody, err := c.Get(systemURI)
+	if err != nil {
+		return nil, err
+	}
+    
+    var systemData RedfishSystem
+    if err := json.Unmarshal(systemBody, &systemData); err != nil {
+        return nil, fmt.Errorf("failed to decode system data from %s: %w", systemURI, err)
+    }
+
+    // Map Node Data
+    inv.Node = mapCommonProperties(
+        systemData.CommonRedfishProperties, 
+        "Node", 
+        systemURI, 
+        "", // Parent will be resolved later (Chassis/Rack, etc.)
+    )
+    
+    // --- 2. Get Processors (CPUs) ---
+    if cpuCollectionURI := systemData.Processors.ODataID; cpuCollectionURI != "" {
+        cpuDevices, err := getCollectionDevices(c, cpuCollectionURI, "CPU", systemURI, &RedfishProcessor{})
+        if err != nil {
+            fmt.Printf("Warning: Failed to retrieve CPU inventory from %s: %v\n", cpuCollectionURI, err)
+        } else {
+            inv.CPUs = cpuDevices
+        }
+    }
+
+    // --- 3. Get Memory (DIMMs) ---
+    if dimmCollectionURI := systemData.Memory.ODataID; dimmCollectionURI != "" {
+        dimmDevices, err := getCollectionDevices(c, dimmCollectionURI, "DIMM", systemURI, &RedfishMemory{})
+        if err != nil {
+            fmt.Printf("Warning: Failed to retrieve DIMM inventory from %s: %v\n", dimmCollectionURI, err)
+        } else {
+            inv.DIMMs = dimmDevices
+        }
+    }
+
+	return inv, nil
+}
+
+// getCollectionDevices retrieves a collection, iterates over members, and maps them to DiscoveredDevice.
+// componentTypeExample is an empty struct pointer (*RedfishProcessor, *RedfishMemory) used for typing.
+func getCollectionDevices(c *RedfishClient, collectionURI, deviceType, parentURI string, componentTypeExample interface{}) ([]DiscoveredDevice, error) {
+	var devices []DiscoveredDevice
+
+	collectionBody, err := c.Get(collectionURI)
+	if err != nil {
+		return nil, err
+	}
+
+	var collection RedfishCollection
+	if err := json.Unmarshal(collectionBody, &collection); err != nil {
+		return nil, fmt.Errorf("failed to decode collection from %s: %w", collectionURI, err)
+	}
+
+	for _, member := range collection.Members {
+		memberBody, err := c.Get(member.ODataID)
+		if err != nil {
+			fmt.Printf("Warning: Failed to get member %s: %v\n", member.ODataID, err)
+			continue
+		}
+
+		// Create a new instance of the correct component type for unmarshaling
+        // We rely on the CommonRedfishProperties being the first embedded field
+		component := reflect.New(reflect.TypeOf(componentTypeExample).Elem()).Interface()
+
+		if err := json.Unmarshal(memberBody, &component); err != nil {
+			fmt.Printf("Warning: Failed to unmarshal component %s: %v\n", member.ODataID, err)
+			continue
+		}
+        
+        // Use reflection to access the CommonRedfishProperties, which is the 0th field.
+        // This is necessary because the component (Processor/Memory) struct is generic here.
+		rfProps := reflect.ValueOf(component).Elem().Field(0).Interface().(CommonRedfishProperties)
+
+		devices = append(devices, mapCommonProperties(rfProps, deviceType, member.ODataID, parentURI))
+	}
+	
+	return devices, nil
+}
