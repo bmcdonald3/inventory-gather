@@ -91,7 +91,7 @@ func CollectAndPost(
     // We rely on the parent ID being an empty string for the Node device.
     
     // 1. Post Parent Devices (Devices with no ParentID URI)
-    for i, dev := range devices {
+    for _, dev := range devices {
         if dev.ParentID == "" {
             // This is a top-level device (Node)
             tempName := fmt.Sprintf("%s-%s", dev.DeviceType, dev.SerialNumber)
