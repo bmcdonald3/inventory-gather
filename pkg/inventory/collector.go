@@ -37,11 +37,12 @@ func discoverDevices(c *RedfishClient) ([]DiscoveredDevice, error) {
 
 	// --- 2. Iterate through each System (Node) ---
 	for _, member := range systemsCollection.Members {
+		systemURI := strings.TrimPrefix(member.ODataID, "/redfish/v1")
 		// Traverse into the System resource (the Node)
-		systemInventory, err := getSystemInventory(c, member.ODataID)
+		systemInventory, err := getSystemInventory(c, systemURI)
 		if err != nil {
 			// Log the error and continue to the next system
-			fmt.Printf("Warning: Failed to get inventory for system %s: %v\n", member.ODataID, err)
+			fmt.Printf("Warning: Failed to get inventory for system %s: %v\n", systemURI, err)
 			continue
 		}
         
