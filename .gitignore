@@ -21,10 +21,6 @@
 # Go module cache (usually found in $GOPATH/pkg/mod, but sometimes local)
 /pkg/mod/
 
-## Fabrica / Generated Artifacts
-# Exclude the temporary test file you created
-/cmd/test/
-
 # Generated code and files that should not be tracked
 # NOTE: Fabrica generates code into specific folders (e.g., pkg/resources, cmd/server). 
 # You should track the source files (like cmd/server/main.go and the resource structs) 

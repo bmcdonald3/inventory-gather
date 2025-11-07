@@ -11,8 +11,7 @@ func main() {
 	// through the simulated (but sequential) API posting logic.
 	log.Println("Starting API posting test...")
 
-	// Hardcode a dummy IP since the Redfish part is simulated anyway.
-	err := inventory.CollectAndPost("1.1.1.1") 
+	err := inventory.CollectAndPost("172.24.0.2") 
 	if err != nil {
 		log.Fatalf("Test failed: %v", err)
 	}
