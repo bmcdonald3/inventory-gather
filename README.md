@@ -68,7 +68,7 @@ Inventory collection and posting completed successfully.
 
 This section illustrates the complete JSON structure of the **Node** device (`Node-QSBP82909274`) posted by this tool, demonstrating how the Redfish data is mapped into the Fabrica resource envelope.
 
-``json
+```json
 {
   "apiVersion": "v1",
   "kind": "Device",
