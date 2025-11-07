@@ -9,142 +9,99 @@ import (
 	"net/http"
 	"crypto/tls"
 	"io"
+	"errors"
+	"reflect"
 )
 
 // Placeholder for the actual API server address
 const InventoryAPIHost = "http://localhost:8081"
 const DefaultUsername = "root"
-const DefaultPassword = "password" // Security note: Hardcoding credentials is not recommended in production.
+const DefaultPassword = "initial0" // Security note: Hardcoding credentials is not recommended in production.
 
-func CollectAndPost(bmcIP string) error {
-	// 1. Initialize Redfish Client
-	rfClient, err := NewRedfishClient(bmcIP, DefaultUsername, DefaultPassword)
-	if err != nil {
-		return fmt.Errorf("failed to initialize Redfish client: %w", err)
-	}
-
-	// 2. REDFISH DISCOVERY (Placeholder for Step 3)
-	// For testing the client, we can make a simple call to the root service entry point.
-	body, err := rfClient.Get("") // Getting the root path (https://<ip>/redfish/v1)
-	if err != nil {
-		return fmt.Errorf("redfish client test failed: %w", err)
-	}
-	
-	fmt.Printf("Redfish Client Test: Successfully connected to %s. Response size: %d bytes.\n", rfClient.BaseURL, len(body))
-
-	// devices, err := discoverDevices(rfClient) // The next step's function
-
-	// --- A. REDFISH DISCOVERY (Using simulated data for now) ---
-	devices := []DiscoveredDevice{
-		{DeviceType: "Node", Manufacturer: "HPE (Simulated)", SerialNumber: "ABC0001", RedfishURI: "/Systems/1"},
-		{DeviceType: "CPU", Manufacturer: "Intel (Simulated)", SerialNumber: "CPU0002", RedfishURI: "/Systems/1/Processors/1"},
-		{DeviceType: "DIMM", Manufacturer: "Micron (Simulated)", SerialNumber: "DIMM0003", RedfishURI: "/Systems/1/Memory/1"},
-	}
-	fmt.Println("Redfish Discovery Simulated: Found 3 devices.")
-
-	// B. API POSTING
-	// The API requires a two-step process: Create the resource, then update its status.
-	// We will use a map to store the relationship between the temporary name and the API-assigned UID.
-	nameToUID := make(map[string]string)
-	
-	// C. PROCESS DEVICE HIERARCHY (BMC/Node first)
-	// Process the main system device first, as others are children.
-	// In a real implementation, you'd process parent devices before children.
-	
-	for i, dev := range devices {
-		// 1. Create the Device Resource Envelope (POST /devices)
-		tempName := fmt.Sprintf("%s-%d-%s", dev.DeviceType, i, dev.SerialNumber)
-		
-		fmt.Printf("-> Creating resource envelope for %s (%s)...\n", tempName, dev.DeviceType)
-		uid, err := createDeviceEnvelope(tempName)
-		if err != nil {
-			return fmt.Errorf("failed to create API envelope for %s: %w", tempName, err)
-		}
-		nameToUID[tempName] = uid
-		
-		// 2. Map the Redfish data to the API's Status struct
-		// (A much cleaner way would be to unmarshal directly from Redfish and then transform).
-		statusData := map[string]interface{}{
-			"deviceType":   dev.DeviceType,
-			"manufacturer": dev.Manufacturer,
-			"partNumber":   dev.PartNumber,
-			"serialNumber": dev.SerialNumber,
-			// parentID would need to be resolved to a UUID here using the nameToUID map
-			// For simplicity and focusing on top-level for now, we leave it out.
-			// "parentID": resolveParentID(dev.ParentID, nameToUID),
-			"properties": map[string]interface{}{
-				"redfish_uri": dev.RedfishURI,
-			},
-		}
-
-		// 3. Update the Status (PUT /devices/{uid}/status)
-		fmt.Printf("-> Updating status for %s (UID: %s)...\n", tempName, uid)
-		err = updateDeviceStatus(uid, statusData)
-		if err != nil {
-			return fmt.Errorf("failed to update status for %s: %w", tempName, err)
-		}
-		fmt.Printf("-> Successfully posted device %s\n", uid)
-	}
-
-	return nil
-}
-
-// pkg/inventory/collector.go
-
-// discoverDevices is a simplified placeholder for the Redfish client logic.
-func discoverDevices(bmcIP string) ([]DiscoveredDevice, error) {
-	// **THIS IS THE CRITICAL LOGIC YOU WILL NEED TO DEVELOP FULLY.**
-	//
-	// You will need a proper Redfish client to:
-	// 1. Connect to "https://" + bmcIP + "/redfish/v1"
-	// 2. Authenticate (Basic or Session-based).
-	// 3. Start traversal from /redfish/v1/Systems/ or /redfish/v1/Chassis/
-	// 4. Follow links to /Systems/X/Processors, /Systems/X/Memory, etc.
-	
-	// Example of a minimal set of data you would gather:
+// discoverDevices uses the Redfish client to walk the resource hierarchy
+// and extract device information.
+func discoverDevices(c *RedfishClient) ([]DiscoveredDevice, error) {
 	var devices []DiscoveredDevice
+    
+    // --- 1. Get Systems Collection ---
+	systemsBody, err := c.Get("/Systems")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Systems collection: %w", err)
+	}
 
-	// --- 1. System/Node ---
-	devices = append(devices, DiscoveredDevice{
-		DeviceType: "Node",
-		Manufacturer: "HPE (Redfish System)",
-		PartNumber: "ProLiant-BL460c-Gen10",
-		SerialNumber: "ABC0001",
-		RedfishURI: "/redfish/v1/Systems/1",
-	})
-	
-	// --- 2. CPU/Processor ---
-	devices = append(devices, DiscoveredDevice{
-		DeviceType: "CPU",
-		Manufacturer: "Intel",
-		PartNumber: "Xeon-Gold-6240",
-		SerialNumber: "CPU0002",
-		ParentID: "/redfish/v1/Systems/1", // Placeholder
-		RedfishURI: "/redfish/v1/Systems/1/Processors/1",
-	})
+	var systemsCollection RedfishCollection
+	if err := json.Unmarshal(systemsBody, &systemsCollection); err != nil {
+		return nil, fmt.Errorf("failed to decode Systems collection: %w", err)
+	}
 
-	// --- 3. DIMM/Memory ---
-	devices = append(devices, DiscoveredDevice{
-		DeviceType: "DIMM",
-		Manufacturer: "Micron",
-		PartNumber: "32GB-DDR4-2666",
-		SerialNumber: "DIMM0003",
-		ParentID: "/redfish/v1/Systems/1", // Placeholder
-		RedfishURI: "/redfish/v1/Systems/1/Memory/1",
-	})
-	
-	fmt.Println("Redfish Discovery Simulated: Found 3 devices.")
+	// --- 2. Iterate through each System (Node) ---
+	for _, member := range systemsCollection.Members {
+		// Traverse into the System resource (the Node)
+		systemInventory, err := getSystemInventory(c, member.ODataID)
+		if err != nil {
+			// Log the error and continue to the next system
+			fmt.Printf("Warning: Failed to get inventory for system %s: %v\n", member.ODataID, err)
+			continue
+		}
+        
+        // Collect Node, CPUs, and DIMMs
+		devices = append(devices, systemInventory.Node)
+		devices = append(devices, systemInventory.CPUs...)
+		devices = append(devices, systemInventory.DIMMs...)
+	}
+
+	fmt.Printf("Redfish Discovery Complete: Found %d total devices.\n", len(devices))
 	return devices, nil
 }
 
-// pkg/inventory/collector.go
+func CollectAndPost(
+	bmcIP string) error {
+    // 1. Initialize Redfish Client
+    rfClient, err := NewRedfishClient(bmcIP, DefaultUsername, DefaultPassword)
+    if err != nil {
+        return fmt.Errorf("failed to initialize Redfish client: %w", err)
+    }
 
-type Metadata struct {
-	UID string `json:"uid"`
-}
+    // Optional debug check (can be removed)
+    body, err := rfClient.Get("") 
+    if err != nil {
+        return fmt.Errorf("redfish client test failed: %w", err)
+    }
+    fmt.Printf("Redfish Client Test: Successfully connected to %s. Response size: %d bytes.\n", rfClient.BaseURL, len(body))
 
-type DeviceResponse struct {
-	Metadata Metadata `json:"metadata"`
+
+    // --- 2. REDFISH DISCOVERY (Live Call) ---
+    // Note: We use '=' here, not ':='
+    devices, err := discoverDevices(rfClient) 
+    if err != nil {
+        return fmt.Errorf("redfish discovery failed: %w", err)
+    }
+    
+    if len(devices) == 0 {
+        return errors.New("redfish discovery found no devices to post")
+    }
+
+    // =================================================
+    // TEMPORARY DEBUGGING BLOCK: REMOVE THIS BLOCK TO POST TO API
+    // =================================================
+    fmt.Println("\n--- DISCOVERED DEVICE INVENTORY (MAPPED) ---")
+    for i, dev := range devices {
+        jsonOutput, _ := json.MarshalIndent(dev, "", "  ")
+        fmt.Printf("Device %d:\n%s\n", i+1, jsonOutput)
+    }
+    fmt.Println("-------------------------------------------")
+    return nil // <--- EXIT HERE TO PREVIEW DATA
+    // =================================================
+
+    // --- 3. API POSTING (The original successful logic) ---
+   /* nameToUID := make(map[string]string)
+    
+    for i, dev := range devices {
+        // 1. Create the Device Resource Envelope (POST /devices)
+        // ... (API Posting Logic using createDeviceEnvelope and updateDeviceStatus) ...
+    }
+
+    return nil*/
 }
 
 // createDeviceEnvelope POSTs to /devices to create the resource and get its UID.
