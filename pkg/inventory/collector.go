@@ -274,3 +274,22 @@ func (c *RedfishClient) Get(path string) ([]byte, error) {
 
 	return body, nil
 }
+
+
+func mapCommonProperties(rfProps CommonRedfishProperties, deviceType, redfishURI, parentURI string) DiscoveredDevice {
+    // Redfish often uses Model if PartNumber is unavailable or vice-versa.
+    // Prioritize PartNumber, fallback to Model.
+    partNum := rfProps.PartNumber
+    if partNum == "" {
+        partNum = rfProps.Model
+    }
+
+	return DiscoveredDevice{
+		DeviceType:   deviceType,
+		Manufacturer: rfProps.Manufacturer,
+		PartNumber:   partNum,
+		SerialNumber: rfProps.SerialNumber,
+		ParentID:     parentURI, // This will be resolved to a UUID later (Step 5)
+		RedfishURI:   redfishURI,
+	}
+}
